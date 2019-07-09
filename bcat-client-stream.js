@@ -10,35 +10,57 @@ function loadVideo() {
 }
 
 async function loadBCatVideo(videoElement, masterTx) {
-    const bcatArguments = await getBCatArguments(masterTx)
-    //const mimeCodec = fromHex(bcatArguments[2])
-    const mimeCodec = 'video/webm;codecs="vp9,opus"' // Hardcoded for Shem's video
-    const fileName = fromHex(bcatArguments[4])
-    console.log(`mime codec: ${mimeCodec}`)
-    console.log(`filename: ${fileName}`)
+    videoElement.src = await bcat(masterTx, (type, properties) => {
+        videoElement.play()
+        switch (type) {
+            case 'fetch':
+                document.getElementById('status').innerHTML = `Fetching ${properties.segment} of ${properties.arguments}...`
+                break;
+            case 'done':
+                document.getElementById('status').innerHTML = `Download complete`
+                break;
+        }
+    })
+}
 
-    if ('MediaSource' in window && MediaSource.isTypeSupported(mimeCodec)) {
-        var mediaSource = new MediaSource()
-        console.log(mediaSource.readyState) // closed
-        videoElement.src = URL.createObjectURL(mediaSource)
-        mediaSource.addEventListener('sourceopen', async () => {
-            console.log(this.readyState) // open
-            const sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
-            for (segment = 6; segment < bcatArguments.length; segment++) {
-                const tx = bcatArguments[segment]
-                const url = 'https://bico.media/' + tx
-                console.log(`fetching segment [${segment}] ${url}`)
-                document.getElementById('status').innerHTML = `Fetching ${segment} of ${bcatArguments.length}...`
-                const response = await fetch(url)
-                const arrayBuffer = await response.arrayBuffer()
-                sourceBuffer.appendBuffer(arrayBuffer);
-                videoElement.play();
-            }
-            mediaSource.endOfStream();
-            document.getElementById('status').innerHTML = `Download complete`
-        });
-    } else {
-        console.error('Unsupported MIME type or codec: ', mimeCodec);
+// Returns an objectUrl promise which can be assigned to video.src
+// e.g. video.src = await bcat(masterTx)
+// with callback:
+// video.src = await bcat(masterTx, (type, properties) => {
+//    if (type === 'update') console.log(properties.segment + ' of ' + properties.arguments)
+//    if (type === 'done') console.log('Done')
+// })
+async function bcat(masterTx, cb) {
+    if ('MediaSource' in window) {
+        const bcatArguments = await getBCatArguments(masterTx)
+        //const mimeCodec = fromHex(bcatArguments[2])
+        const mimeCodec = 'video/webm;codecs="vp9,opus"' // Hardcoded for Shem's video
+        const fileName = fromHex(bcatArguments[4])
+        console.log(`mime codec: ${mimeCodec}`)
+        console.log(`filename: ${fileName}`)
+    
+        if (MediaSource.isTypeSupported(mimeCodec)) {
+            var mediaSource = new MediaSource()
+            console.log(mediaSource.readyState) // closed
+            mediaSource.addEventListener('sourceopen', async () => {
+                console.log(this.readyState) // open
+                const sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+                for (let segment = 6; segment < bcatArguments.length; segment++) {
+                    const tx = bcatArguments[segment]
+                    const url = 'https://bico.media/' + tx
+                    console.log(`fetching segment [${segment}] ${url}`)
+                    if (cb) cb('fetch', {segment: segment, arguments: bcatArguments.length})
+                    const response = await fetch(url)
+                    const arrayBuffer = await response.arrayBuffer()
+                    sourceBuffer.appendBuffer(arrayBuffer);
+                }
+                mediaSource.endOfStream();
+                if (cb) cb('done', {})
+            });
+            return URL.createObjectURL(mediaSource)
+        } else {
+            console.error('Unsupported MIME type or codec: ', mimeCodec);
+        }
     }
 }
 
