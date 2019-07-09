@@ -1,4 +1,8 @@
 window.addEventListener('load', async () => {
+    const url = new URL(window.location)
+    if (url.searchParams.has('tx')) {
+        document.getElementById('tx').value = url.searchParams.get('tx')
+    }
     loadVideo()
 })
 
@@ -12,6 +16,9 @@ function loadVideo() {
 async function loadBCatVideo(videoElement, masterTx) {
     videoElement.src = await bcatFile(masterTx, (type, properties) => {
         switch (type) {
+            case 'info':
+                document.getElementById('video-name').innerHTML = properties.fileName
+                break;
             case 'fetch':
                 document.getElementById('status').innerHTML = `Downloading ${properties.segment} of ${properties.arguments}... <progress value="${properties.segment}" max="${properties.arguments}"></progress>`
                 break;
@@ -26,6 +33,7 @@ async function loadBCatVideo(videoElement, masterTx) {
 // e.g. video.src = await bcat(masterTx)
 // with callback:
 // video.src = await bcat(masterTx, (type, properties) => {
+//    if (type === 'info') console.log(properties.mimeType + ', ' + properties.fileName)
 //    if (type === 'update') console.log(properties.segment + ' of ' + properties.arguments)
 //    if (type === 'done') console.log('Done')
 // })
@@ -34,9 +42,10 @@ async function bcat(masterTx, cb) {
         const bcatArguments = await getBCatArguments(masterTx)
         const mimeCodec = fromHex(bcatArguments[2])
         const fileName = fromHex(bcatArguments[4])
+        cb('info', {mimeType: mimeCodec, fileName: fileName})
         console.log(`mime codec: ${mimeCodec}`)
         console.log(`filename: ${fileName}`)
-    
+
         if (MediaSource.isTypeSupported(mimeCodec)) {
             var mediaSource = new MediaSource()
             console.log(mediaSource.readyState) // closed
@@ -76,6 +85,7 @@ async function bcatFile(masterTx, cb) {
     const bcatArguments = await getBCatArguments(masterTx)
     const mimeCodec = fromHex(bcatArguments[2])
     const fileName = fromHex(bcatArguments[4])
+    cb('info', {mimeType: mimeCodec, fileName: fileName})
     console.log(`mime codec: ${mimeCodec}`)
     console.log(`filename: ${fileName}`)
 
