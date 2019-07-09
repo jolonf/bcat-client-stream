@@ -1,0 +1,25 @@
+<!doctype html>
+
+<html>
+
+    <head>
+        <title>BCat Client Stream</title>
+        <script src="bcat-client-stream.js"></script>
+    </head>
+
+    <body>
+        <h1>BCat Client Stream Video</h1>
+
+        <label for="tx">BCat master transaction id: </label>
+        <input type="text" id="tx" size="64" value="a5899246f2df864078db6230ddfe0a7cc799a87934b5b4db0560d42e4c560379">
+        <button onclick="loadVideo()">Load BCat Video</button>
+        <span id="status"></span>
+
+        <hr>
+
+        <video class='bcat-video' width="640" controls>
+        </video>
+
+    </body>
+
+</html>
