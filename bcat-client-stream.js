@@ -20,10 +20,10 @@ async function loadBCatVideo(videoElement, masterTx) {
                 document.getElementById('video-name').innerHTML = properties.fileName
                 break;
             case 'fetch':
-                document.getElementById('status').innerHTML = `Downloading ${properties.segment} of ${properties.arguments}... <progress value="${properties.segment}" max="${properties.arguments}"></progress>`
+                document.getElementById('status').innerHTML = `Downloading ${properties.segment} of ${properties.arguments} (${(properties.size / 1e6).toFixed(1)} MB) <progress value="${properties.segment}" max="${properties.arguments}"></progress>`
                 break;
             case 'done':
-                document.getElementById('status').innerHTML = `Download complete: ${(properties.size / 1e6).toFixed(1)} MB`
+                document.getElementById('status').innerHTML = `Download complete (${(properties.size / 1e6).toFixed(1)} MB)`
                 break;
         }
     })
@@ -34,8 +34,8 @@ async function loadBCatVideo(videoElement, masterTx) {
 // with callback:
 // video.src = await bcat(masterTx, (type, properties) => {
 //    if (type === 'info') console.log(properties.mimeType + ', ' + properties.fileName)
-//    if (type === 'update') console.log(properties.segment + ' of ' + properties.arguments)
-//    if (type === 'done') console.log('Done')
+//    if (type === 'update') console.log(properties.segment + ' of ' + properties.arguments + ' ' + properties.size)
+//    if (type === 'done') console.log('Done ' + properties.size)
 // })
 async function bcat(masterTx, cb) {
     if ('MediaSource' in window) {
@@ -53,19 +53,20 @@ async function bcat(masterTx, cb) {
                 console.log(this.readyState) // open
                 const sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
                 let fetchList = []
+                let size = 0
                 for (let segment = 6; segment < bcatArguments.length; segment++) {
                     if (segment % 30 == 0) {
-                        await waitForFetchListSourceBuffer(fetchList, sourceBuffer)
+                        size += await waitForFetchListSourceBuffer(fetchList, sourceBuffer)
                         fetchList = []
                     }
                     const tx = bcatArguments[segment]
                     const url = 'https://bico.media/' + tx
                     console.log(`fetching segment [${segment}] ${url}`)
-                    if (cb) cb('fetch', {segment: segment, arguments: bcatArguments.length})
+                    if (cb) cb('fetch', {segment: segment, arguments: bcatArguments.length, size: size})
                     fetchList.push(fetch(url))
                 }
-                await waitForFetchListSourceBuffer(fetchList, sourceBuffer)
-                if (cb) cb('done', {})
+                size += await waitForFetchListSourceBuffer(fetchList, sourceBuffer)
+                if (cb) cb('done', {size: size})
                 // https://github.com/samdutton/simpl/issues/92
                 sourceBuffer.addEventListener('updateend', function() {
                     if (!sourceBuffer.updating && mediaSource.readyState === 'open') {
@@ -91,19 +92,20 @@ async function bcatFile(masterTx, cb) {
 
     let arrayBuffers = []
     let fetchList = []
+    let size = 0
     for (let segment = 6; segment < bcatArguments.length; segment++) {
         if (segment % 30 == 0) {
-            await waitForFetchListArrayBuffers(fetchList, arrayBuffers)
+            size += await waitForFetchListArrayBuffers(fetchList, arrayBuffers)
             fetchList = []
         }
         const tx = bcatArguments[segment]
         const url = 'https://bico.media/' + tx
         console.log(`fetching segment [${segment}] ${url}`)
-        if (cb) cb('fetch', {segment: segment, arguments: bcatArguments.length})
+        if (cb) cb('fetch', {segment: segment, arguments: bcatArguments.length, size: size})
         fetchList.push(fetch(url))
     }
-    await waitForFetchListArrayBuffers(fetchList, arrayBuffers)
-    if (cb) cb('done', {size: arrayBuffers.map(a => a.byteLength).reduce((a, b) => a + b)})
+    size += await waitForFetchListArrayBuffers(fetchList, arrayBuffers)
+    if (cb) cb('done', {size: size})
 
     const blob = new Blob(arrayBuffers, {type: mimeCodec})
 
@@ -111,21 +113,27 @@ async function bcatFile(masterTx, cb) {
 }
 
 async function waitForFetchListSourceBuffer(fetchList, sourceBuffer) {
+    let size = 0
     const responses = await Promise.all(fetchList)
     for (let i = 0; i < responses.length; i++) {
         let response = responses[i]
         const arrayBuffer = await response.arrayBuffer()
-        sourceBuffer.append(arrayBuffer);    
+        sourceBuffer.append(arrayBuffer) 
+        size += arrayBuffer.byteLength
     }
+    return size
 }
 
 async function waitForFetchListArrayBuffers(fetchList, arrayBuffers) {
+    let size = 0
     const responses = await Promise.all(fetchList)
     for (let i = 0; i < responses.length; i++) {
         let response = responses[i]
         const arrayBuffer = await response.arrayBuffer()
         arrayBuffers.push(arrayBuffer);    
+        size += arrayBuffer.byteLength
     }
+    return size
 }
 
 // Gets the BCat arguments including list of transaction ids from BitDB
