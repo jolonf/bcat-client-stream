@@ -11,7 +11,6 @@ function loadVideo() {
 
 async function loadBCatVideo(videoElement, masterTx) {
     videoElement.src = await bcat(masterTx, (type, properties) => {
-        videoElement.play()
         switch (type) {
             case 'fetch':
                 document.getElementById('status').innerHTML = `Fetching ${properties.segment} of ${properties.arguments}...`
@@ -45,15 +44,19 @@ async function bcat(masterTx, cb) {
             mediaSource.addEventListener('sourceopen', async () => {
                 console.log(this.readyState) // open
                 const sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+                let fetchList = []
                 for (let segment = 6; segment < bcatArguments.length; segment++) {
+                    if (segment % 30 == 0) {
+                        await waitForFetchList(fetchList, sourceBuffer)
+                        fetchList = []
+                    }
                     const tx = bcatArguments[segment]
                     const url = 'https://bico.media/' + tx
                     console.log(`fetching segment [${segment}] ${url}`)
                     if (cb) cb('fetch', {segment: segment, arguments: bcatArguments.length})
-                    const response = await fetch(url)
-                    const arrayBuffer = await response.arrayBuffer()
-                    sourceBuffer.appendBuffer(arrayBuffer);
+                    fetchList.push(fetch(url))
                 }
+                await waitForFetchList(fetchList, sourceBuffer)
                 mediaSource.endOfStream();
                 if (cb) cb('done', {})
             });
@@ -61,6 +64,15 @@ async function bcat(masterTx, cb) {
         } else {
             console.error('Unsupported MIME type or codec: ', mimeCodec);
         }
+    }
+}
+
+async function waitForFetchList(fetchList, sourceBuffer) {
+    const responses = await Promise.all(fetchList)
+    for (let i = 0; i < responses.length; i++) {
+        let response = responses[i]
+        const arrayBuffer = await response.arrayBuffer()
+        sourceBuffer.appendBuffer(arrayBuffer);    
     }
 }
 
