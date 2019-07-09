@@ -57,8 +57,13 @@ async function bcat(masterTx, cb) {
                     fetchList.push(fetch(url))
                 }
                 await waitForFetchList(fetchList, sourceBuffer)
-                mediaSource.endOfStream();
                 if (cb) cb('done', {})
+                // https://github.com/samdutton/simpl/issues/92
+                sourceBuffer.addEventListener('updateend', function() {
+                    if (!sourceBuffer.updating && mediaSource.readyState === 'open') {
+                        mediaSource.endOfStream();
+                    }
+                });
             });
             return URL.createObjectURL(mediaSource)
         } else {
