@@ -13,7 +13,7 @@ async function loadBCatVideo(videoElement, masterTx) {
     videoElement.src = await bcatFile(masterTx, (type, properties) => {
         switch (type) {
             case 'fetch':
-                document.getElementById('status').innerHTML = `Fetching ${properties.segment} of ${properties.arguments}...`
+                document.getElementById('status').innerHTML = `Downloading ${properties.segment} of ${properties.arguments}... <progress value="${properties.segment}" max="${properties.arguments}"></progress>`
                 break;
             case 'done':
                 document.getElementById('status').innerHTML = `Download complete`
