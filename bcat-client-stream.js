@@ -23,7 +23,7 @@ async function loadBCatVideo(videoElement, masterTx) {
                 document.getElementById('status').innerHTML = `Downloading ${properties.segment} of ${properties.arguments}... <progress value="${properties.segment}" max="${properties.arguments}"></progress>`
                 break;
             case 'done':
-                document.getElementById('status').innerHTML = `Download complete`
+                document.getElementById('status').innerHTML = `Download complete: ${(properties.size / 1e6).toFixed(1)} MB`
                 break;
         }
     })
@@ -103,7 +103,7 @@ async function bcatFile(masterTx, cb) {
         fetchList.push(fetch(url))
     }
     await waitForFetchListArrayBuffers(fetchList, arrayBuffers)
-    if (cb) cb('done', {})
+    if (cb) cb('done', {size: arrayBuffers.map(a => a.byteLength).reduce((a, b) => a + b)})
 
     const blob = new Blob(arrayBuffers, {type: mimeCodec})
 
