@@ -32,8 +32,7 @@ async function loadBCatVideo(videoElement, masterTx) {
 async function bcat(masterTx, cb) {
     if ('MediaSource' in window) {
         const bcatArguments = await getBCatArguments(masterTx)
-        //const mimeCodec = fromHex(bcatArguments[2])
-        const mimeCodec = 'video/webm;codecs="vp9,opus"' // Hardcoded for Shem's video
+        const mimeCodec = fromHex(bcatArguments[2])
         const fileName = fromHex(bcatArguments[4])
         console.log(`mime codec: ${mimeCodec}`)
         console.log(`filename: ${fileName}`)
@@ -75,8 +74,7 @@ async function bcat(masterTx, cb) {
 // Returns the concatenated file contents in a Blob in an objectURL promise
 async function bcatFile(masterTx, cb) {
     const bcatArguments = await getBCatArguments(masterTx)
-    //const mimeCodec = fromHex(bcatArguments[2])
-    const mimeCodec = 'video/webm;codecs="vp9,opus"' // Hardcoded for Shem's video
+    const mimeCodec = fromHex(bcatArguments[2])
     const fileName = fromHex(bcatArguments[4])
     console.log(`mime codec: ${mimeCodec}`)
     console.log(`filename: ${fileName}`)
