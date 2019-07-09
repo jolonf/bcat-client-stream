@@ -10,7 +10,7 @@ function loadVideo() {
 }
 
 async function loadBCatVideo(videoElement, masterTx) {
-    videoElement.src = await bcat(masterTx, (type, properties) => {
+    videoElement.src = await bcatFile(masterTx, (type, properties) => {
         switch (type) {
             case 'fetch':
                 document.getElementById('status').innerHTML = `Fetching ${properties.segment} of ${properties.arguments}...`
@@ -47,7 +47,7 @@ async function bcat(masterTx, cb) {
                 let fetchList = []
                 for (let segment = 6; segment < bcatArguments.length; segment++) {
                     if (segment % 30 == 0) {
-                        await waitForFetchList(fetchList, sourceBuffer)
+                        await waitForFetchListSourceBuffer(fetchList, sourceBuffer)
                         fetchList = []
                     }
                     const tx = bcatArguments[segment]
@@ -56,7 +56,7 @@ async function bcat(masterTx, cb) {
                     if (cb) cb('fetch', {segment: segment, arguments: bcatArguments.length})
                     fetchList.push(fetch(url))
                 }
-                await waitForFetchList(fetchList, sourceBuffer)
+                await waitForFetchListSourceBuffer(fetchList, sourceBuffer)
                 if (cb) cb('done', {})
                 // https://github.com/samdutton/simpl/issues/92
                 sourceBuffer.addEventListener('updateend', function() {
@@ -72,12 +72,51 @@ async function bcat(masterTx, cb) {
     }
 }
 
-async function waitForFetchList(fetchList, sourceBuffer) {
+// Returns the concatenated file contents in a Blob in an objectURL promise
+async function bcatFile(masterTx, cb) {
+    const bcatArguments = await getBCatArguments(masterTx)
+    //const mimeCodec = fromHex(bcatArguments[2])
+    const mimeCodec = 'video/webm;codecs="vp9,opus"' // Hardcoded for Shem's video
+    const fileName = fromHex(bcatArguments[4])
+    console.log(`mime codec: ${mimeCodec}`)
+    console.log(`filename: ${fileName}`)
+
+    let arrayBuffers = []
+    let fetchList = []
+    for (let segment = 6; segment < bcatArguments.length; segment++) {
+        if (segment % 30 == 0) {
+            await waitForFetchListArrayBuffers(fetchList, arrayBuffers)
+            fetchList = []
+        }
+        const tx = bcatArguments[segment]
+        const url = 'https://bico.media/' + tx
+        console.log(`fetching segment [${segment}] ${url}`)
+        if (cb) cb('fetch', {segment: segment, arguments: bcatArguments.length})
+        fetchList.push(fetch(url))
+    }
+    await waitForFetchListArrayBuffers(fetchList, arrayBuffers)
+    if (cb) cb('done', {})
+
+    const blob = new Blob(arrayBuffers, {type: mimeCodec})
+
+    return URL.createObjectURL(blob)
+}
+
+async function waitForFetchListSourceBuffer(fetchList, sourceBuffer) {
     const responses = await Promise.all(fetchList)
     for (let i = 0; i < responses.length; i++) {
         let response = responses[i]
         const arrayBuffer = await response.arrayBuffer()
-        sourceBuffer.appendBuffer(arrayBuffer);    
+        sourceBuffer.append(arrayBuffer);    
+    }
+}
+
+async function waitForFetchListArrayBuffers(fetchList, arrayBuffers) {
+    const responses = await Promise.all(fetchList)
+    for (let i = 0; i < responses.length; i++) {
+        let response = responses[i]
+        const arrayBuffer = await response.arrayBuffer()
+        arrayBuffers.push(arrayBuffer);    
     }
 }
 
