@@ -6,18 +6,30 @@ window.addEventListener('load', async () => {
     loadVideo()
 })
 
-function loadVideo() {
+async function loadVideo() {
+    document.getElementById('status').innerHTML = `Downloading...`
+    
     const masterTx = document.getElementById('tx').value
     const video = document.querySelector('video.bcat-video')
+    const image = document.querySelector('img.bcat-image')
+    const loadingMessage = document.querySelector('#loading-message')
+    const infoBox = document.getElementById('info-box')
+    const fileNameElement = document.getElementById('file-name')
+    const downloadLink = document.getElementById('download')
 
-    loadBCatVideo(video, masterTx)
-}
+    video.style.display = 'none'
+    image.style.display = 'none'
+    infoBox.style.display = 'none'
+    loadingMessage.style.display = 'block'
 
-async function loadBCatVideo(videoElement, masterTx) {
-    videoElement.src = await bcatFile(masterTx, (type, properties) => {
+    let mimeType
+    let fileName
+
+    const objectUrl = await bcatFile(masterTx, (type, properties) => {
         switch (type) {
             case 'info':
-                document.getElementById('video-name').innerHTML = properties.fileName
+                mimeType = properties.mimeType
+                fileName = properties.fileName
                 break;
             case 'fetch':
                 document.getElementById('status').innerHTML = `Downloading ${properties.segment} of ${properties.arguments} (${(properties.size / 1e6).toFixed(1)} MB) <progress value="${properties.segment}" max="${properties.arguments}"></progress>`
@@ -27,7 +39,24 @@ async function loadBCatVideo(videoElement, masterTx) {
                 break;
         }
     })
-}
+
+    loadingMessage.style.display = 'none'
+
+    fileNameElement.innerHTML = fileName
+
+    downloadLink.setAttribute('href', objectUrl)
+    downloadLink.setAttribute('download', fileName)
+
+    infoBox.style.display = 'block'
+
+    if (mimeType.startsWith('video') || mimeType.startsWith('audio')) {
+        video.src = objectUrl
+        video.style.display = 'inline'
+    } else if (mimeType.startsWith('image')) {
+        image.src = objectUrl
+        image.style.display = 'inline'
+    }
+} 
 
 // Returns an objectUrl promise which can be assigned to video.src
 // e.g. video.src = await bcat(masterTx)
@@ -61,7 +90,7 @@ async function bcat(masterTx, cb) {
                     }
                     const tx = bcatArguments[segment]
                     const url = 'https://bico.media/' + tx
-                    console.log(`fetching segment [${segment}] ${url}`)
+                    //console.log(`fetching segment [${segment}] ${url}`)
                     if (cb) cb('fetch', {segment: segment, arguments: bcatArguments.length, size: size})
                     fetchList.push(fetch(url))
                 }
@@ -100,7 +129,7 @@ async function bcatFile(masterTx, cb) {
         }
         const tx = bcatArguments[segment]
         const url = 'https://bico.media/' + tx
-        console.log(`fetching segment [${segment}] ${url}`)
+        //console.log(`fetching segment [${segment}] ${url}`)
         if (cb) cb('fetch', {segment: segment, arguments: bcatArguments.length, size: size})
         fetchList.push(fetch(url))
     }

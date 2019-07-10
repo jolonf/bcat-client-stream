@@ -3,17 +3,25 @@
 <html>
 
     <head>
-        <title>BCat Video Player</title>
+        <title>B://cat Video Player</title>
 
         <style>
             body {
                 font-family: sans-serif;
             }
-            video {
-                max-width: 1080px;
+            video.bcat-video {
+                max-width: 75%;
+                display: none;
+            }
+            img.bcat-image {
+                max-width: 75%;
+                display: none;
             }
             .video-container {
                 text-align: center;
+            }
+            #info-box {
+                display: none;
             }
         </style>
 
@@ -21,20 +29,28 @@
     </head>
 
     <body>
-        <h1>BCat Video Player</h1>
+        <h1>B://cat Video Player</h1>
 
-        <p>Video will appear when all segments have finished downloading | <a href="https://github.com/jolonf/bcat-client-stream">GitHub Repo</a></p>
-        <label for="tx">BCat master transaction id: </label>
+        <p><a href="https://github.com/jolonf/bcat-client-stream">GitHub Repo</a></p>
+        <label for="tx">B://cat master transaction id: </label>
         <input type="text" id="tx" size="70" value="825eef75019015d8d43a3012b9fe0a1e8b627a1a9343de0c022f4b9944766adc">
-        <button onclick="loadVideo()">Load BCat Video</button>
+        <button onclick="loadVideo()">Load B://cat Media</button>
         <span id="status"></span>
 
         <hr>
 
         <div class='video-container'>
+            <p id='loading-message'>
+                Media will appear when all segments have downloaded
+            </p>
             <video class='bcat-video' controls>
             </video>
-            <h3 id="video-name"></h3>
+            <img class='bcat-image'>
+            <div id='info-box'>
+                <h3 id="file-name"></h3>
+                <a id="download" href="javascript:void(0)">Download</a>
+                <p>Files hosted at <a href="https://bico.media">Bico.Media</a></p>
+            </div>  
         </div>
 
     </body>
